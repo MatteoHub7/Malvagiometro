@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Malvagiometro</title>
+
+  <style>
+    :root{
+      --paper:#f6e6c9;
+      --ink:#22140f;
+      --cream:#fff2d9;
+      --shadow: rgba(0,0,0,.25);
+      --hot:#d6252c;
+    }
+    body{
+      margin:0; min-height:100vh; display:grid; place-items:center;
+      background:var(--paper);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--ink);
+    }
+    .card{
+      width:min(560px,94vw);
+      background:rgba(255,255,255,.55);
+      border:4px solid var(--ink);
+      border-radius:22px;
+      padding:14px;
+      box-shadow:0 16px 40px var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    /* leggero halftone */
+    .card::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image: radial-gradient(rgba(0,0,0,.08) 1px, transparent 1px);
+      background-size: 7px 7px;
+      opacity:.22;
+      mix-blend-mode:multiply;
+      pointer-events:none;
+    }
+
+    .gaugeWrap{
+      position:relative;
+      width:100%;
+      aspect-ratio: 1 / 1;
+      overflow:hidden;
+      border-radius:16px;
+      background:var(--cream);
+
+      /* perno (se ti serve lo rifiniamo, ma parte bene) */
+      --px: 50%;
+      --py: 60.2%;
+    }
+    .gaugeWrap img{
+      width:100%; height:100%;
+      object-fit:cover;
+      display:block;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+
+    /* LANCETTA */
+    .needle{
+      position:absolute;
+      left: var(--px);
+      top:  var(--py);
+      width: 42%;
+      height: 18px;
+      transform-origin: 0% 50%;
+      transform: translateY(-50%) rotate(-165deg); /* zero */
+      transition: transform 260ms ease-out;        /* usata per rientro a zero */
+      filter: drop-shadow(2px 3px 0 rgba(0,0,0,.25));
+      z-index:4;
+      pointer-events:none;
+    }
+    .needle::before{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(180deg, #e24a4a, #b81f24);
+      border:4px solid var(--ink);
+      border-radius:999px;
+      clip-path: polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%);
+    }
+
+    /* PERNO */
+    .hub{
+      position:absolute;
+      left: var(--px);
+      top: var(--py);
+      width: 54px;
+      height: 54px;
+      transform: translate(-50%,-50%);
+      background: radial-gradient(circle at 35% 35%, #ffe9a8, #f0b84f);
+      border:6px solid var(--ink);
+      border-radius:50%;
+      box-shadow:0 10px 0 rgba(0,0,0,.12);
+      z-index:5;
+      pointer-events:none;
+    }
+
+    /* BOTTONE FIGO anni 50 */
+    .btn50{
+      position:relative;
+      width:100%;
+      margin-top:12px;
+      padding:16px 14px 14px;
+      border-radius:22px;
+      border:6px solid var(--ink);
+      background: linear-gradient(180deg, #fff6de, #ffd27b);
+      box-shadow:0 16px 0 rgba(0,0,0,.16);
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      overflow:hidden;
+      transform: translateZ(0);
+      z-index:2;
+    }
+    .btn50 .label{
+      display:block;
+      font-weight:1000;
+      letter-spacing:1px;
+      text-transform:uppercase;
+      font-size:16px;
+      text-align:center;
+    }
+    .btn50 .sub{
+      display:block;
+      margin-top:6px;
+      font-weight:900;
+      font-size:12px;
+      opacity:.85;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      text-align:center;
+    }
+    .btn50 .burst{
+      position:absolute;
+      top:-12px;
+      right:-10px;
+      padding:10px 12px;
+      background:var(--hot);
+      color:#fff;
+      border:5px solid var(--ink);
+      border-radius:999px;
+      font-weight:1000;
+      letter-spacing:.6px;
+      transform: rotate(10deg);
+      box-shadow:0 10px 0 rgba(0,0,0,.12);
+    }
+    .btn50 .shine{
+      position:absolute;
+      inset:-40px;
+      background: linear-gradient(70deg,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,.35) 45%,
+        rgba(255,255,255,0) 60%);
+      transform: translateX(-70%) rotate(5deg);
+      animation: shine 2.8s infinite;
+      pointer-events:none;
+      opacity:.8;
+    }
+    @keyframes shine{
+      0%   { transform: translateX(-80%) rotate(5deg); }
+      45%  { transform: translateX(130%) rotate(5deg); }
+      100% { transform: translateX(130%) rotate(5deg); }
+    }
+    .btn50:active{
+      transform: translateY(4px);
+      box-shadow:0 12px 0 rgba(0,0,0,.16);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="gaugeWrap">
+      <img src="gauge.PNG" alt="Malvagiometro" />
+      <div class="needle" id="needle"></div>
+      <div class="hub"></div>
+    </div>
+
+    <button id="btn" class="btn50">
+      <span class="burst">BIP!</span>
+      <span class="label">MISURA LA CATTIVERIA</span>
+      <span class="sub">tieni premuto per bloccare</span>
+      <span class="shine"></span>
+    </button>
+  </div>
+
+<script>
+  const needle = document.getElementById("needle");
+  const btn = document.getElementById("btn");
+
+  // ---- ANGOLI ----
+  const ZERO_DEG = -165; // dove torna quando rilasci
+
+  // 5 tacche (random dentro ciascuna)
+  const levels = [
+    { a0: -170, a1: -130 }, // Angioletta
+    { a0: -130, a1: -90  }, // Birbantella
+    { a0: -90,  a1: -50  }, // Disonesta
+    { a0: -50,  a1: -15  }, // Bandita
+    { a0: -15,  a1:  10  }  // Signora oscura
+  ];
+
+  const rand = (min,max) => min + Math.random()*(max-min);
+  const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
+
+  // ---- AUDIO: bip-bip stupido ----
+  let audioCtx = null;
+
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function bip(){
+    const ctx = ensureAudio();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+
+    o.type = "square";
+    o.frequency.value = 800 + Math.random() * 600; // random = più “scemo”
+
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.10, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+
+    o.connect(g).connect(ctx.destination);
+    o.start(t);
+    o.stop(t + 0.05);
+  }
+
+  // ---- GEIGER NEEDLE ----
+  let currentDeg = ZERO_DEG;
+  let targetDeg  = ZERO_DEG;
+
+  let geigerTimer = null;
+  let settleTimer = null;
+  let holding = false;
+
+  function setNeedleInstant(deg){
+    currentDeg = deg;
+    needle.style.transition = "none";
+    needle.style.transform = `translateY(-50%) rotate(${deg}deg)`;
+  }
+
+  function setNeedleSmooth(deg, ms=260){
+    currentDeg = deg;
+    needle.style.transition = `transform ${ms}ms ease-out`;
+    needle.style.transform = `translateY(-50%) rotate(${deg}deg)`;
+  }
+
+  function stopGeiger(){
+    if(geigerTimer){ clearInterval(geigerTimer); geigerTimer = null; }
+    if(settleTimer){ clearTimeout(settleTimer); settleTimer = null; }
+  }
+
+  function randomTarget(){
+    const i = Math.floor(Math.random() * levels.length);
+    const lv = levels[i];
+    return rand(lv.a0, lv.a1) + rand(-2, 2); // jitter “stampato male”
+  }
+
+  function startGeigerTo(target){
+    stopGeiger();
+    targetDeg = target;
+
+    // durante il geiger, niente transizione: scatti veri
+    needle.style.transition = "none";
+
+    // ritmo irregolare
+    let interval = Math.floor(rand(28, 55));
+
+    geigerTimer = setInterval(() => {
+      const dist = targetDeg - currentDeg;
+
+      // vicini al target: vibra attorno
+      if(Math.abs(dist) < 2.2){
+        const jitter = rand(-1.8, 1.8);
+        const d = clamp(targetDeg + jitter, -180, 15);
+        needle.style.transform = `translateY(-50%) rotate(${d}deg)`;
+
+        if(Math.random() < 0.55) bip();
+
+        // se non sto tenendo premuto, dopo un attimo torna a zero
+        if(!holding){
+          stopGeiger();
+          settleTimer = setTimeout(() => setNeedleSmooth(ZERO_DEG, 320), 220);
+        }
+        return;
+      }
+
+      // passo a scatti: grande se lontano, piccolo se vicino
+      const step = clamp(Math.abs(dist) * 0.22, 1.2, 10.0);
+      const dir = Math.sign(dist);
+      const micro = rand(-0.9, 0.9);
+
+      const next = currentDeg + dir * step + micro;
+      currentDeg = next;
+
+      needle.style.transform = `translateY(-50%) rotate(${next}deg)`;
+
+      if(Math.random() < 0.75) bip();
+
+      // cambia un po’ l’irregolarità
+      interval = Math.floor(rand(28, 55));
+    }, interval);
+  }
+
+  // ---- INTERAZIONE: tap / hold ----
+  function onPressStart(ev){
+    ev.preventDefault();
+    holding = true;
+
+    ensureAudio();              // sblocca audio su iOS
+    startGeigerTo(randomTarget());
+  }
+
+  function onPressEnd(){
+    if(!holding) return;
+    holding = false;
+
+    stopGeiger();
+    setNeedleSmooth(ZERO_DEG, 420);
+  }
+
+  // Pointer events (iOS moderni) + fallback touch
+  btn.addEventListener("pointerdown", onPressStart);
+  btn.addEventListener("pointerup", onPressEnd);
+  btn.addEventListener("pointercancel", onPressEnd);
+  btn.addEventListener("pointerleave", onPressEnd);
+
+  btn.addEventListener("touchstart", onPressStart, { passive:false });
+  btn.addEventListener("touchend", onPressEnd);
+  btn.addEventListener("touchcancel", onPressEnd);
+
+  // stato iniziale
+  setNeedleInstant(ZERO_DEG);
+</script>
+</body>
+</html>
